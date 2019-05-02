@@ -31,6 +31,15 @@ defmodule Adjust.DB do
     query(conn, "DROP DATABASE #{database}")
   end
 
+  def insert_values(conn, table, values) do
+    values_query =
+      values
+      |> Enum.map(&("(" <> Enum.join(&1, ",") <> ")"))
+      |> Enum.join(",")
+
+    query(conn, "INSERT INTO #{table} VALUES #{values_query}")
+  end
+
   defp query(conn, query) do
     Logger.debug(query)
     Postgrex.query!(conn, query, [])
