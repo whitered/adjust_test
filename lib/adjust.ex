@@ -71,6 +71,11 @@ defmodule Adjust do
 
   def start_server do
     Logger.info("Starting web server at http://localhost:#{@port}")
-    Plug.Cowboy.http(Adjust.Server, [], port: @port)
+    {:ok, pid} = Plug.Cowboy.http(Adjust.Server, [], port: @port)
+    ref = Process.monitor(pid)
+
+    receive do
+      {:DOWN, ^ref, _, _, _} -> :ok
+    end
   end
 end
