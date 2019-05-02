@@ -7,3 +7,5 @@ config :adjust, :database,
   username: "postgres",
   password: "postgres",
   database: "postgres"
+
+config :logger, level: :info

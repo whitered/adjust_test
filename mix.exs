@@ -19,7 +19,8 @@ defmodule Adjust.MixProject do
 
   defp deps do
     [
-      {:postgrex, "~> 0.14.2"}
+      {:postgrex, "~> 0.14.2"},
+      {:plug_cowboy, "~> 2.0"}
     ]
   end
 end

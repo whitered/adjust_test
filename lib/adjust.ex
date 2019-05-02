@@ -5,14 +5,17 @@ defmodule Adjust do
   @source db: "foo", table: "source"
   @dest db: "bar", table: "dest"
   @databases [@source, @dest]
-  @batch_size 10
-  @total_rows 33
-  @stream_opts max_rows: 5
+  @batch_size 1000
+  @total_rows 1_000_000
+  @port 4000
+
+  def databases, do: @databases
 
   def run do
     create_databases()
     fill_source()
     copy_data()
+    start_server()
     # drop_databases()
   end
 
@@ -56,32 +59,18 @@ defmodule Adjust do
 
   def copy_data do
     Logger.info("Copying data to DEST")
-    {source_stream, source_task} = stream_async(@source[:db], "COPY #{@source[:table]} TO STDOUT")
-    {dest_stream, dest_task} = stream_async(@dest[:db], "COPY #{@dest[:table]} FROM STDIN")
-    Enum.into(source_stream, dest_stream, &result_to_iodata/1)
-    send(source_task.pid, :close)
-    send(dest_task.pid, :close)
-  end
 
-  defp stream_async(db, query) do
-    host = self()
-    task = Task.async(fn -> stream(host, db, query) end)
-
-    receive do
-      {:stream, stream} -> {stream, task}
-    end
-  end
-
-  defp stream(host, db, query) do
-    DB.transaction(db, fn conn ->
-      stream = Postgrex.stream(conn, query, [], @stream_opts)
-      send(host, {:stream, stream})
-
-      receive do
-        :close -> :ok
-      end
+    DB.stream(@source[:db], "COPY #{@source[:table]} TO STDOUT", fn src ->
+      DB.stream(@dest[:db], "COPY #{@dest[:table]} FROM STDIN", fn dest ->
+        Enum.into(src, dest, &result_to_iodata/1)
+      end)
     end)
   end
 
   defp result_to_iodata(%Postgrex.Result{rows: rows}), do: rows
+
+  def start_server do
+    Logger.info("Starting web server at http://localhost:#{@port}")
+    Plug.Cowboy.http(Adjust.Server, [], port: @port)
+  end
 end
