@@ -19,6 +19,12 @@ defmodule Adjust.DB do
     GenServer.stop(pid)
   end
 
+  def transaction(db, fun) do
+    connect(db, fn conn ->
+      Postgrex.transaction(conn, fun)
+    end)
+  end
+
   def create_database(conn, database) do
     query(conn, "CREATE DATABASE #{database}")
   end
